@@ -228,7 +228,7 @@ def train(epoch, train_loader, model, contrast, criterion_1, criterion_2, optimi
 
 def main():
     if not torch.cuda.is_available():
-        raise 'Only support GPU mode'
+        raise Exception('Only support GPU mode')
     # parse the args
     args = parse_option()
     print(vars(args))
