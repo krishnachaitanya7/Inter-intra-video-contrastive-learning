@@ -7,6 +7,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from PIL import Image
+from pathlib import Path
 
 import accimage
 
@@ -104,10 +105,10 @@ class UCF101Dataset(Dataset):
         if vids[1] == 'HandStandPushups':
             vid = vids[0] + '_HandstandPushups_' + vids[2] + '_' + vids[3]
         #'''
-
-        rgb_folder = os.path.join('/work/taoli/ucf101/jpegs_256/', vid)
-        u_folder = os.path.join('/work/taoli/ucf101/tvl1_flow/u/', vid)
-        v_folder = os.path.join('/work/taoli/ucf101/tvl1_flow/v/', vid)
+        home_folder = str(Path.home())
+        rgb_folder = os.path.join(f'{home_folder}/Datasets/jpegs_256/', vid)
+        u_folder = os.path.join(f'{home_folder}/Datasets/tvl1_flow/u/', vid)
+        v_folder = os.path.join(f'{home_folder}/Datasets/tvl1_flow/v/', vid)
 
         filenames = ['frame000001.jpg']
         for parent, dirnames, filenames in os.walk(rgb_folder):
