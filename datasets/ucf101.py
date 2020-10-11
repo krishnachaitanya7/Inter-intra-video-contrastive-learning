@@ -259,9 +259,9 @@ class UCF101ClipRetrievalDataset(Dataset):
         if vids[1] == 'HandStandPushups':
             vid = vids[0] + '_HandstandPushups_' + vids[2] + '_' + vids[3]
 
-        rgb_folder = os.path.join('/work/taoli/ucf101/jpegs_256/', vid) # + v_**
-        u_folder = os.path.join('/work/taoli/ucf101/tvl1_flow/u/', vid)
-        v_folder = os.path.join('/work/taoli/ucf101/tvl1_flow/v/', vid)
+        rgb_folder = os.path.join('/home/shivababa/Datasets/jpegs_256/', vid) # + v_**
+        u_folder = os.path.join('/home/shivababa/Datasets/tvl1_flow/u/', vid)
+        v_folder = os.path.join('/home/shivababa/Datasets/tvl1_flow/v/', vid)
 
         filenames = ['frame000001.jpg']
         for parent, dirnames, filenames in os.walk(rgb_folder):
