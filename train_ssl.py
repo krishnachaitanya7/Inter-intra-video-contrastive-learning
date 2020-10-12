@@ -79,7 +79,7 @@ def parse_option():
     parser.add_argument('--tb_path', type=str, default='./logs/', help='path to tensorboard')
 
     # add new views
-    parser.add_argument('--debug', type=ast.literal_eval, default=False)
+    parser.add_argument('--debug', type=ast.literal_eval, default=True)
     parser.add_argument('--modality', type=str, default='res', choices=['rgb', 'res', 'u', 'v'])
     parser.add_argument('--intra_neg', type=ast.literal_eval, default=True)
     parser.add_argument('--neg', type=str, default='repeat', choices=['repeat', 'shuffle'])
@@ -173,6 +173,8 @@ def train(epoch, train_loader, model, contrast, criterion_1, criterion_2, optimi
         index = index.cuda()
 
         # ===================forward=====================
+        # print(inputs.size())
+
         feat_1 = model(inputs) # view 1 is always RGB
         if opt.modality == 'res':
             feat_2 = model(diff(inputs))
@@ -304,6 +306,7 @@ def main():
         time1 = time.time()
         view1_loss, view1_prob, view2_loss, view2_prob = train(epoch, train_loader, model, contrast, 
                                                             criterion_1, criterion_2, optimizer, args)
+        print("inside routine")
         time2 = time.time()
         print('\nepoch {}, total time {:.2f}'.format(epoch, time2 - time1))
 
