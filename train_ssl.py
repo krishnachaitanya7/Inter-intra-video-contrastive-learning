@@ -46,7 +46,7 @@ def parse_option():
     parser.add_argument('--tb_freq', type=int, default=500, help='tb frequency')
     parser.add_argument('--save_freq', type=int, default=40, help='save frequency')
     parser.add_argument('--batch_size', type=int, default=16, help='batch_size')
-    parser.add_argument('--num_workers', type=int, default=1, help='num of workers to use')
+    parser.add_argument('--num_workers', type=int, default=8, help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=240, help='number of training epochs')
 
     # optimization
