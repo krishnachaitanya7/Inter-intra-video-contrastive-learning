@@ -22,6 +22,10 @@ from models.r3d import R3DNet
 from models.r21d import R2Plus1DNet
 
 import ast
+from sklearn.manifold import TSNE
+import seaborn as sns
+import matplotlib.pyplot as plt
+from class_dictionary import number_to_label
 
 
 def calculate_accuracy(outputs, targets):
@@ -135,7 +139,6 @@ def load_pretrained_weights(ckpt_path):
 #     print('')
 #     return losses.avg
 
-
 def test(args, model, criterion, test_dataloader):
     torch.set_grad_enabled(False)
     model.eval()
@@ -144,8 +147,9 @@ def test(args, model, criterion, test_dataloader):
 
     if args.modality == 'res':
         print("[Warning]: using residual frames as input")
-
     total_loss = 0.0
+    all_outputs = []
+    all_targets = []
     for i, data in enumerate(test_dataloader, 1):
         # get inputs
         rgb_clips, u_clips, v_clips, targets, _ = data
@@ -168,15 +172,30 @@ def test(args, model, criterion, test_dataloader):
             o = torch.mean(o, dim=0)
             outputs.append(o)
         outputs = torch.stack(outputs)
-        loss = criterion(outputs, targets)
+        # loss = criterion(outputs, targets)
+        if i == 1:
+            all_outputs = outputs
+            all_targets = targets
+        else:
+            all_outputs = torch.cat((all_outputs, outputs), dim=0)
+            all_targets = torch.cat((all_targets, targets), dim=0)
         # compute loss and acc
-        total_loss += loss.item()
-        acc = calculate_accuracy(outputs, targets)
-        accuracies.update(acc, inputs.size(0))
-        print('Test: [{}/{}], {acc.val:.3f} ({acc.avg:.3f})'.format(i, len(test_dataloader), acc=accuracies), end='\r')
-    avg_loss = total_loss / len(test_dataloader)
-    print('\n[TEST] loss: {:.3f}, acc: {:.3f}'.format(avg_loss, accuracies.avg))
-    return avg_loss
+        print(f"Current i is {i}")
+        # total_loss += loss.item()
+        # acc = calculate_accuracy(outputs, targets)
+        # accuracies.update(acc, inputs.size(0))
+        # print('Test: [{}/{}], {acc.val:.3f} ({acc.avg:.3f})'.format(i, len(test_dataloader), acc=accuracies), end='\r')
+    # avg_loss = total_loss / len(test_dataloader)
+    # print('\n[TEST] loss: {:.3f}, acc: {:.3f}'.format(avg_loss, accuracies.avg))
+    # return avg_loss
+    tsne = TSNE(n_components=2, random_state=0)
+    all_outputs = all_outputs.cpu()
+    all_targets = all_targets.cpu()
+    seaborn_labels = [number_to_label[i] for i in all_targets.tolist()]
+    tsne_obj = tsne.fit_transform(all_outputs)
+    sns.scatterplot(tsne_obj[:, 0], tsne_obj[:, 1], legend="full", hue=seaborn_labels, palette=sns.color_palette("hls", 10))
+    plt.show()
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Finetune 3D CNN from pretrained weights')
@@ -196,7 +215,7 @@ def parse_args():
     parser.add_argument('--epochs', type=int, default=150, help='number of total epochs to run')
     parser.add_argument('--start-epoch', type=int, default=1, help='manual epoch number (useful on restarts)')
     parser.add_argument('--bs', type=int, default=16, help='mini-batch size')
-    parser.add_argument('--workers', type=int, default=4, help='number of data loading workers')
+    parser.add_argument('--workers', type=int, default=1, help='number of data loading workers')
     parser.add_argument('--seed', type=int, default=632, help='seed for initializing training.')
     parser.add_argument('--modality', default='res', type=str, help='modality from [rgb, res, u, v]')
     args = parser.parse_args()
@@ -237,7 +256,7 @@ if __name__ == '__main__':
         model.load_state_dict(pretrained_weights['model'], strict=False)
     else:
         # model.load_state_dict(pretrained_weights['model'], strict=True)
-        model.load_state_dict(pretrained_weights, strict=True)
+        model.load_state_dict(pretrained_weights, strict=False)
 
     if args.desp:
         exp_name = '{}_{}_cls_{}_{}'.format(args.model, args.modality, args.desp, time.strftime('%m%d'))
@@ -291,4 +310,3 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(test_dataset, batch_size=args.bs, shuffle=False,
                                  num_workers=args.workers, pin_memory=True)
     test(args, model, criterion, test_dataloader)
-
