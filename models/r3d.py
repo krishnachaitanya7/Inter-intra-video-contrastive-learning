@@ -138,6 +138,10 @@ class R3DNet(nn.Module):
         self.return_conv = return_conv
         self.num_classes = num_classes
 
+        # Initialize the gradient to None for Grad Cam
+        self.gradients = None
+        # Initialize the features
+        self.features = None
         # first conv, with stride 1x2x2 and kernel size 3x7x7
         if modality == 'uv':
             self.conv1 = SpatioTemporalConv(2, 64, [3, 7, 7], stride=[1, 2, 2], padding=[1, 3, 3])
@@ -165,6 +169,8 @@ class R3DNet(nn.Module):
         if self.with_classifier:
             self.linear = nn.Linear(512, self.num_classes)
 
+    def save_gradient(self, grad):
+        self.gradients = grad
 
     def forward(self, x):
         x = self.relu1(self.bn1(self.conv1(x)))
@@ -172,7 +178,10 @@ class R3DNet(nn.Module):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
-    
+        # Save features and add hook for the gradcam
+        self.features = x
+        x.register_hook(self.save_gradient)
+        # End grad cam part
         if self.return_conv:
             x = self.feature_pool(x)
             # print(x.shape)
