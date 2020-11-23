@@ -183,10 +183,8 @@ class GradCam:
 
             # Now normalize the cam
             cam = np.maximum(cam, 0)
-            # Do I have to do these below steps?
-            # TODO: Decide later
-            # cam = cam - np.min(cam)
-            # cam = cam / np.max(cam)
+            cam = cam - np.min(cam)
+            cam = cam / np.max(cam)
             modified_input = input_clip[0].permute(1, 2, 3, 0).cpu().data.numpy()
             for each_input_frame, mask in zip(modified_input, cam):
                 upscaled_mask = cv2.resize(mask, input_clip.shape[3:])

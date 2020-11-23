@@ -191,7 +191,7 @@ def plot_videos(video1, video2):
         im1.set_data(frame1)
         im2.set_data(frame2)
         f.canvas.draw()
-        sleep(0.1)
+        sleep(0.01)
 
 def test(args, model, criterion, test_dataloader):
     # torch.set_grad_enabled(False)
