@@ -75,7 +75,7 @@ def plot_videos(video1, video2):
         im1.set_data(frame1)
         im2.set_data(frame2)
         f.canvas.draw()
-        sleep(0.1)
+        sleep(0.01)
 
 
 class GradCam:
@@ -106,7 +106,7 @@ class GradCam:
         all_input = []
         all_cam_output = []
         input = input.cuda()
-        for input_clip in input:
+        for input_clip in input: # input_clip: [3, 16, 112, 112], input: [10, 3, 16, 112, 112]
             # Append input to all_input to return back
             # Now input_clip is in [Channels x Clip Length x Width x Height]
             # But to make it easier to plot in Matplotlib, you gotta have [Clip Length x Width x Height x Channels]
@@ -118,20 +118,20 @@ class GradCam:
             # But as told before if we loop through 5D input, it changes to 4D input, now we gotta take it back to
             # 5D input by using pytorch unsqueeze, that's what I am gonna do in my next line
             # Now the dimensions of input becomes [1 x Channels x Clip Length x Width x Height]
-            input_clip = torch.unsqueeze(input_clip, 0)
+            input_clip = torch.unsqueeze(input_clip, 0)  # input_clip: [1, 3, 16, 112, 112]
             # This is a specific to this model. The inputs I gotta pass comes from the diff function.
             # Also as the model requires cuda inputs, we are converting everything to cuda arrays
             # Shape of output ideally would be 1x101
-            output = self.model(diff(input_clip))
+            output = self.model(diff(input_clip))  # output: [1, 101]
             # Now find the highest index of the output array, because that's the class that the model predicted
-            out = torch.argmax(output, dim=1).cpu().data.numpy()[0]
-            index = out
+            out = torch.argmax(output, dim=1).cpu().data.numpy()[0]  # out = argmax int like 3 or 79 < 101
+            index = out  # same as out
             # Below we save the model's conv5 features into a variable
-            features = self.model.features
+            features = self.model.features  # features: [1, 512, 2, 7, 7]
             # Now make a one hot encoding. Keep the index of the class which is highest argmax (index variable defined
             # above in our case), Example
             # Input is [1, -2, -3, 5, -7], your one hot encoding output would be [0, 0, 0, 5, 0]
-            one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
+            one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)  # one_hot: [1, 101]
             one_hot[0][index] = 1
             one_hot = torch.from_numpy(one_hot).requires_grad_(True)
             one_hot = torch.sum(one_hot.cuda() * output)
@@ -148,24 +148,24 @@ class GradCam:
             # we don't need batch size as we are operating on 1 batch size means single output, so we will remove
             # that, convert it to numpy array for further processing
             # Final shape of features is Channels x # of sub videos x Width X Height
-            features = self.model.features.cpu().data.numpy()[0, :]
+            features = self.model.features.cpu().data.numpy()[0, :]  # features: [512, 2, 7, 7]
             # For getting the gradients I have added a hook in r3d.py which will go and save gradients to a variable
             # named self.gradients. That's not ideal! Again it's 2020.
             # the default shape of self.model.gradients is 1x512x2x7x7 which is analogous to
             # Batch Size x Channels x # of sub videos x Width X Height
             # we don't need batch size as we are operating on 1 batch size means single output, so we will remove
             # that, convert it to numpy array for further processing
-            # Final shape of grads_val is Channels x # of sub videos x Width X Height
-            grads_val = self.model.gradients.cpu().data.numpy()[0, :]
+            # Final shape of grads_val is Channels x Clip Length x Width X Height
+            grads_val = self.model.gradients.cpu().data.numpy()[0, :]  # grads_val: [512, 2, 7, 7]
             # Now we want gradient weights. See the last Width X Height of grads_val variable? We are gonna average that
-            # and put it into weights. So the output shape of weights would be Channels x # of sub videos
-            weights = np.mean(grads_val, axis=(2, 3))
+            # and put it into weights. So the output shape of weights would be Channels x Clip Length
+            weights = np.mean(grads_val, axis=(2, 3))  # weights: [512, 2]
             # Now it's time to initialize the mask we would put on each frame of our video
             # The shape of the mask would be Input's Clip Length x feature's Width x feature's Height
             # Now each frame will be used as mask and imposed on original input's frame
-            cam = np.zeros((input_clip.shape[2], *features.shape[2:]), dtype=np.float32)
+            cam = np.zeros((input_clip.shape[2], *features.shape[2:]), dtype=np.float32)  # cam: [16, 7, 7]
 
-            # Now you will observe that in features output the # of subvideos becomes 2. In the original video it was 16
+            # Now you will observe that in features output the Clip Length becomes 2. In the original video it was 16
             # Now if we only have 2 how are we gonna mask 16 frames? That's why we reshape the weights and features
             # array so that we get clip length of 16. That's what I am doing programmatically below
             # Now both weights and features are reshaped according to the formula
@@ -173,8 +173,8 @@ class GradCam:
             # Weights shape would be Input Clip Length x Y
             # Features shape would be Input Clip Length x Y x Feature Layer Width x Feature height
             # if input_clip.shape[2] != features.shape[1]:
-            weights = weights.reshape(input_clip.shape[2], -1)
-            features = features.reshape(input_clip.shape[2], -1, features.shape[2], features.shape[3])
+            weights = weights.reshape(input_clip.shape[2], -1)  # weights: [16, 64]
+            features = features.reshape(input_clip.shape[2], -1, features.shape[2], features.shape[3])  # features: [16, 64, 7, 7]
             # Now we are gonna multiply weights obtained from gradients with the features as instructed in the
             # paper
             for i, w in enumerate(weights):
@@ -185,12 +185,12 @@ class GradCam:
             cam = np.maximum(cam, 0)
             # cam = cam - np.min(cam)
             # cam = cam / np.max(cam)
-            modified_input = input_clip[0].permute(1, 2, 3, 0).cpu().data.numpy()
+            modified_input = input_clip[0].permute(1, 2, 3, 0).cpu().data.numpy()  # modified_input: [16, 112, 112, 3]
             for each_input_frame, mask in zip(modified_input, cam):
-                upscaled_mask = cv2.resize(mask, input_clip.shape[3:])
+                upscaled_mask = cv2.resize(mask, input_clip.shape[3:])  # upscaled_mask: [112, 112]
                 upscaled_mask = upscaled_mask - np.min(upscaled_mask)
                 upscaled_mask = upscaled_mask / np.max(upscaled_mask)
-                masked_image = show_cam_on_image(each_input_frame, upscaled_mask)
+                masked_image = show_cam_on_image(each_input_frame, upscaled_mask)  # masked_image: [112, 112, 3]
                 all_cam_output.append(masked_image)
         return np.array(all_input), np.array(all_cam_output)
 

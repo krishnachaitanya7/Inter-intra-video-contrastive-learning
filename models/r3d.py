@@ -181,8 +181,6 @@ class R3DNet(nn.Module):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
-
-
         # End grad cam part
         if self.return_conv:
             x = self.feature_pool(x)
