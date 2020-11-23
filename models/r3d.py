@@ -174,13 +174,14 @@ class R3DNet(nn.Module):
 
     def forward(self, x):
         x = self.relu1(self.bn1(self.conv1(x)))
+        # Save features and add hook for the gradcam
+        self.features = x
+        x.register_hook(self.save_gradient)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.conv5(x)
-        # Save features and add hook for the gradcam
-        self.features = x
-        x.register_hook(self.save_gradient)
+
         # End grad cam part
         if self.return_conv:
             x = self.feature_pool(x)

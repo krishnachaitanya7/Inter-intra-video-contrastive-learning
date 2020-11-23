@@ -172,9 +172,9 @@ class GradCam:
             # Input Clip Length x Y = Feature Layer Clip Length x Feature Layer Channels
             # Weights shape would be Input Clip Length x Y
             # Features shape would be Input Clip Length x Y x Feature Layer Width x Feature height
-            if input_clip.shape[2] != features.shape[1]:
-                weights = weights.reshape(input_clip.shape[2], -1)
-                features = features.reshape(input_clip.shape[2], -1, features.shape[2], features.shape[3])
+            # if input_clip.shape[2] != features.shape[1]:
+            weights = weights.reshape(input_clip.shape[2], -1)
+            features = features.reshape(input_clip.shape[2], -1, features.shape[2], features.shape[3])
             # Now we are gonna multiply weights obtained from gradients with the features as instructed in the
             # paper
             for i, w in enumerate(weights):
