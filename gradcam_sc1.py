@@ -44,7 +44,6 @@ def calculate_accuracy(outputs, targets):
 def diff(x):
     shift_x = torch.roll(x, 1, 2)
     return_tensor = x - shift_x
-    return_tensor.requires_grad_(True)
     return return_tensor  # without rescaling
     # return ((x - shift_x) + 1) / 2
 
@@ -69,10 +68,6 @@ def plot_videos(video1, video2):
     # And you need to convert them to WxHxC for plotting purposes
 
     # Let's show a black image at first
-    video1 = video1.clone().cpu().data.numpy()
-    video2 = video2.clone().cpu().data.numpy()
-    video1 = np.moveaxis(video1, 0, -1)
-    video2 = np.moveaxis(video2, 0, -1)
     black_image = np.zeros(video1.shape[1:], dtype=np.float)
     im1 = ax1.imshow(black_image)
     im2 = ax2.imshow(black_image)
@@ -90,7 +85,7 @@ class GradCam:
     def forward(self, input):
         return self.model(input)
 
-    def __call__(self, input, index=None):
+    def __call__(self, input):
         """
         Grad Cam Call Function. This function generates grad cam output
         Parameters
@@ -99,7 +94,7 @@ class GradCam:
         x Clip Length x Width x Height].
         Here Number of clip length(16 here) length Sub-Videos Possible means that if you have 192 frames and the clip
         length you are going to input to the model is 16, then totally int(192/16) = 10 sub videos are possible
-        index. Also in our case for this specific implementation the batch size is always 1, as we are inputting only
+        Also in our case for this specific implementation the batch size is always 1, as we are inputting only
         one video.
         index: The output class int of each Sub Video clip
         Returns
@@ -108,111 +103,116 @@ class GradCam:
         played as a video
 
         """
-        output = self.model(diff(input))
-        features = self.model.features
-        if not index:
-            index = np.argmax(output.cpu().data.numpy())
-
-        one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
-        index = index.cpu().data.numpy()
-        one_hot[0][index] = 1
-        one_hot = torch.from_numpy(one_hot).requires_grad_(True)
-        if self.cuda:
+        all_input = []
+        all_cam_output = []
+        input = input.cuda()
+        for input_clip in input:
+            # Append input to all_input to return back
+            # Now input_clip is in [Channels x Clip Length x Width x Height]
+            # But to make it easier to plot in Matplotlib, you gotta have [Clip Length x Width x Height x Channels]
+            # So I am gonna use pytorch permute to do that, and finally make it a cpu numpy array
+            all_input.extend(input_clip.permute(1, 2, 3, 0).cpu().data.numpy())
+            # Now our model accepts only 5D input. The input is 5D input, but the first dimension
+            # is number of sub videos. which might be 10 in our case. Well we just wanna send one input
+            # to the model for to calculate output. Hence we are looping through input to get each subclip.
+            # But as told before if we loop through 5D input, it changes to 4D input, now we gotta take it back to
+            # 5D input by using pytorch unsqueeze, that's what I am gonna do in my next line
+            # Now the dimensions of input becomes [1 x Channels x Clip Length x Width x Height]
+            input_clip = torch.unsqueeze(input_clip, 0)
+            # This is a specific to this model. The inputs I gotta pass comes from the diff function.
+            # Also as the model requires cuda inputs, we are converting everything to cuda arrays
+            # Shape of output ideally would be 1x101
+            output = self.model(diff(input_clip))
+            # Now find the highest index of the output array, because that's the class that the model predicted
+            out = torch.argmax(output, dim=1).cpu().data.numpy()[0]
+            index = out
+            # Below we save the model's conv5 features into a variable
+            features = self.model.features
+            # Now make a one hot encoding. Keep the index of the class which is highest argmax (index variable defined
+            # above in our case), Example
+            # Input is [1, -2, -3, 5, -7], your one hot encoding output would be [0, 0, 0, 5, 0]
+            one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
+            one_hot[0][index] = 1
+            one_hot = torch.from_numpy(one_hot).requires_grad_(True)
             one_hot = torch.sum(one_hot.cuda() * output)
-        else:
-            one_hot = torch.sum(one_hot * output)
+            # This is where the magic starts, make all gradient outputs to be o
+            self.model.zero_grad()
+            # And then back propagate
+            one_hot.backward(retain_graph=True)
+            # The Conv5 output is considered as features for the model
+            # We are going to get the output of those features right here
+            # I manually added a variable called as self.model.features in the model python file r3d.py
+            # That's not ideal, but hey it's 2020 man
+            # the default shape of self.model.features is 1x512x2x7x7 which is analogous to
+            # Batch Size x Channels x # of sub videos x Width X Height
+            # we don't need batch size as we are operating on 1 batch size means single output, so we will remove
+            # that, convert it to numpy array for further processing
+            # Final shape of features is Channels x # of sub videos x Width X Height
+            features = self.model.features.cpu().data.numpy()[0, :]
+            # For getting the gradients I have added a hook in r3d.py which will go and save gradients to a variable
+            # named self.gradients. That's not ideal! Again it's 2020.
+            # the default shape of self.model.gradients is 1x512x2x7x7 which is analogous to
+            # Batch Size x Channels x # of sub videos x Width X Height
+            # we don't need batch size as we are operating on 1 batch size means single output, so we will remove
+            # that, convert it to numpy array for further processing
+            # Final shape of grads_val is Channels x # of sub videos x Width X Height
+            grads_val = self.model.gradients.cpu().data.numpy()[0, :]
+            # Now we want gradient weights. See the last Width X Height of grads_val variable? We are gonna average that
+            # and put it into weights. So the output shape of weights would be Channels x # of sub videos
+            weights = np.mean(grads_val, axis=(2, 3))
+            # Now it's time to initialize the mask we would put on each frame of our video
+            # The shape of the mask would be Input's Clip Length x feature's Width x feature's Height
+            # Now each frame will be used as mask and imposed on original input's frame
+            cam = np.zeros((input_clip.shape[2], *features.shape[2:]), dtype=np.float32)
 
-        # self.feature_module.zero_grad()
-        self.model.zero_grad()
-        one_hot.backward(retain_graph=True)
+            # Now you will observe that in features output the # of subvideos becomes 2. In the original video it was 16
+            # Now if we only have 2 how are we gonna mask 16 frames? That's why we reshape the weights and features
+            # array so that we get clip length of 16. That's what I am doing programmatically below
+            # Now both weights and features are reshaped according to the formula
+            # Input Clip Length x Y = Feature Layer Clip Length x Feature Layer Channels
+            # Weights shape would be Input Clip Length x Y
+            # Features shape would be Input Clip Length x Y x Feature Layer Width x Feature height
+            if input_clip.shape[2] != features.shape[1]:
+                weights = weights.reshape(input_clip.shape[2], -1)
+                features = features.reshape(input_clip.shape[2], -1, features.shape[2], features.shape[3])
+            # Now we are gonna multiply weights obtained from gradients with the features as instructed in the
+            # paper
+            for i, w in enumerate(weights):
+                for j, w in enumerate(w):
+                    cam[i] += w * features[i, j, :, :]
 
-        # grads_val = self.extractor.get_gradients()[-1].cpu().data.numpy()
-        grads_val = self.model.gradients
-
-        target = features
-        # Below line will just generate for first clip
-        # TODO: make it a for loop
-        target = target.cpu().data.numpy()[0, :]
-        # TODO: Just taking first clip
-        # Put it in a for loop
-        # Convert gradient to numpy
-        grads_val = grads_val.cpu().data.numpy()
-        weights = np.mean(grads_val, axis=(3, 4))[0, :]
-        cam = np.zeros((input.shape[2], *target.shape[2:]), dtype=np.float32)
-
-        # The reshaping should be done only when you wanna
-        # time frames aren't 16
-        if input.shape[2] != target.shape[1]:
-            weights = weights.reshape(input.shape[2], -1)
-            target = target.reshape(input.shape[2], -1, target.shape[2], target.shape[3])
-        for i, w in enumerate(weights):
-            for j, w in enumerate(w):
-                cam[i] += w * target[i, j, :, :]
-
-        cam = np.maximum(cam, 0)
-        # out_cam =
-        cam = cv2.resize(cam, input.shape[2:])
-        cam = cam - np.min(cam)
-        cam = cam / np.max(cam)
-        return cam
+            # Now normalize the cam
+            cam = np.maximum(cam, 0)
+            # Do I have to do these below steps?
+            # TODO: Decide later
+            # cam = cam - np.min(cam)
+            # cam = cam / np.max(cam)
+            modified_input = input_clip[0].permute(1, 2, 3, 0).cpu().data.numpy()
+            for each_input_frame, mask in zip(modified_input, cam):
+                upscaled_mask = cv2.resize(mask, input_clip.shape[3:])
+                masked_image = show_cam_on_image(each_input_frame, upscaled_mask)
+                all_cam_output.append(masked_image)
+        return np.array(all_input), np.array(all_cam_output)
 
 
 def test(args, model, criterion, test_dataloader):
     # torch.set_grad_enabled(False)
     # We need to comment this for Grad Cam
     model.eval()
-    if args.modality == 'res':
-        print("[Warning]: using residual frames as input")
-    total_loss = 0.0
-    all_outputs = []
-    all_targets = []
     grad_cam = GradCam(model=model)
     for i, data in enumerate(test_dataloader, 1):
         # get inputs
+        # Below you get rgb_clips with shape [Batch Size x Sub Videos x Channels x Clip Length x Width x Height]
         rgb_clips, u_clips, v_clips, targets, _ = data
-        # Here I am gonna go ahead and assume that batch size isn't 16, we are just inputting one video
-        # and that's what I am interested in. Nothing else. Nada!
-        # Hence I will do rgb_clips = rgb_clips[0] to get first index, and also if you just pass one vide
-        # you will see the shape[0] would be 1, so that should check out
-        if args.modality == 'u':
-            sampled_clips = u_clips
-        elif args.modality == 'v':
-            sampled_clips = v_clips
-        else:  # rgb and res
-            sampled_clips = rgb_clips
-        sampled_clips = sampled_clips.cuda()
-        targets = targets.cuda()
-        outputs = []
-        for clips in sampled_clips:
-            # inputs = clips.float().cuda()
-            # forward
-            if args.modality == 'res':
-                o = model(diff(clips))
-            else:
-                o = model(clips)
-            o = torch.mean(o, dim=0)
-            outputs.append(o)
-            # Apply Gradcam
-            mask = grad_cam(diff(clips), targets)
-        outputs = torch.stack(outputs)
-        # loss = criterion(outputs, targets)
-        if i == 1:
-            all_outputs = outputs
-            all_targets = targets
-        else:
-            all_outputs = torch.cat((all_outputs, outputs), dim=0)
-            all_targets = torch.cat((all_targets, targets), dim=0)
-        # compute loss and acc
-        print(f"Current i is {i}")
-        break
+        # Now you wanna remove batch size. As batch size is only one, let's remove it
+        # now rgb clips will be [Sub Videos x Channels x Clip Length x Width x Height]
+        # Here Number of clip length(16 here) length Sub-Videos Possible means that if you have 192 frames and the clip
+        # length you are going to input to the model is 16, then totally int(192/16) = 10 sub videos are possible
+        rgb_clips = rgb_clips[0]
+        inputs, masked_inputs = grad_cam(rgb_clips)
+        plot_videos(inputs, masked_inputs)
 
-        # total_loss += loss.item()
-        # acc = calculate_accuracy(outputs, targets)
-        # accuracies.update(acc, inputs.size(0))
-        # print('Test: [{}/{}], {acc.val:.3f} ({acc.avg:.3f})'.format(i, len(test_dataloader), acc=accuracies), end='\r')
-    # avg_loss = total_loss / len(test_dataloader)
-    # print('\n[TEST] loss: {:.3f}, acc: {:.3f}'.format(avg_loss, accuracies.avg))
-    # return avg_loss
+
 
 
 def parse_args():
