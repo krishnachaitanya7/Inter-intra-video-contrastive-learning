@@ -75,7 +75,7 @@ def plot_videos(video1, video2):
         im1.set_data(frame1)
         im2.set_data(frame2)
         f.canvas.draw()
-        sleep(0.01)
+        sleep(0.1)
 
 
 class GradCam:
