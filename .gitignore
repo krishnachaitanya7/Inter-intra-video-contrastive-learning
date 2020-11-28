@@ -1,3 +1,4 @@
 .logs/
 ckpt/r3d_res_repeat_cls.pth
 events*
+dash_player/

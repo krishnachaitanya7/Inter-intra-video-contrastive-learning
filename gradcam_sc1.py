@@ -105,8 +105,9 @@ class GradCam:
         """
         all_input = []
         all_cam_output = []
+        all_output_indices = []
         input = input.cuda()
-        for input_clip in input: # input_clip: [3, 16, 112, 112], input: [10, 3, 16, 112, 112]
+        for input_clip in input:  # input_clip: [3, 16, 112, 112], input: [10, 3, 16, 112, 112]
             # Append input to all_input to return back
             # Now input_clip is in [Channels x Clip Length x Width x Height]
             # But to make it easier to plot in Matplotlib, you gotta have [Clip Length x Width x Height x Channels]
@@ -126,6 +127,7 @@ class GradCam:
             # Now find the highest index of the output array, because that's the class that the model predicted
             out = torch.argmax(output, dim=1).cpu().data.numpy()[0]  # out = argmax int like 3 or 79 < 101
             index = out  # same as out
+            all_output_indices.append(int(out))
             # Below we save the model's conv5 features into a variable
             features = self.model.features  # features: [1, 512, 2, 7, 7]
             # Now make a one hot encoding. Keep the index of the class which is highest argmax (index variable defined
@@ -174,7 +176,8 @@ class GradCam:
             # Features shape would be Input Clip Length x Y x Feature Layer Width x Feature height
             # if input_clip.shape[2] != features.shape[1]:
             weights = weights.reshape(input_clip.shape[2], -1)  # weights: [16, 64]
-            features = features.reshape(input_clip.shape[2], -1, features.shape[2], features.shape[3])  # features: [16, 64, 7, 7]
+            features = features.reshape(input_clip.shape[2], -1, features.shape[2],
+                                        features.shape[3])  # features: [16, 64, 7, 7]
             # Now we are gonna multiply weights obtained from gradients with the features as instructed in the
             # paper
             for i, w in enumerate(weights):
@@ -192,7 +195,7 @@ class GradCam:
                 upscaled_mask = upscaled_mask / np.max(upscaled_mask)
                 masked_image = show_cam_on_image(each_input_frame, upscaled_mask)  # masked_image: [112, 112, 3]
                 all_cam_output.append(masked_image)
-        return np.array(all_input), np.array(all_cam_output)
+        return np.array(all_input), np.array(all_cam_output), all_output_indices
 
 
 def test(args, model, criterion, test_dataloader):
@@ -209,10 +212,9 @@ def test(args, model, criterion, test_dataloader):
         # Here Number of clip length(16 here) length Sub-Videos Possible means that if you have 192 frames and the clip
         # length you are going to input to the model is 16, then totally int(192/16) = 10 sub videos are possible
         rgb_clips = rgb_clips[0]
-        inputs, masked_inputs = grad_cam(rgb_clips)
-        plot_videos(inputs, masked_inputs)
-
-
+        inputs, masked_inputs, output_indices = grad_cam(rgb_clips)
+        # plot_videos(inputs, masked_inputs)
+        return inputs, masked_inputs, output_indices, [int(targets[0]) for _ in range(len(output_indices))]
 
 
 def parse_args():
@@ -229,7 +231,7 @@ def parse_args():
     parser.add_argument('--momentum', type=float, default=9e-1, help='momentum')
     parser.add_argument('--wd', type=float, default=5e-4, help='weight decay')
     parser.add_argument('--model_dir', type=str, default='./ckpt/', help='path to save model')
-    parser.add_argument('--ckpt', type=str, help='checkpoint path')
+    parser.add_argument('--ckpt', type=str, default="/home/shivababa/PycharmProjects/Inter-intra-video-contrastive-learning/ckpt/r3d_res_repeat_cls.pth", help='checkpoint path')
     parser.add_argument('--desp', type=str, help='additional description')
     parser.add_argument('--epochs', type=int, default=150, help='number of total epochs to run')
     parser.add_argument('--start-epoch', type=int, default=1, help='manual epoch number (useful on restarts)')
@@ -241,7 +243,7 @@ def parse_args():
     return args
 
 
-if __name__ == '__main__':
+def main():
     args = parse_args()
     print(vars(args))
 
@@ -331,4 +333,8 @@ if __name__ == '__main__':
     # prev_best_model_path = None
     test_dataloader = DataLoader(test_dataset, batch_size=args.bs, shuffle=False,
                                  num_workers=args.workers, pin_memory=True)
-    test(args, model, criterion, test_dataloader)
+    return test(args, model, criterion, test_dataloader)
+
+
+if __name__ == "__main__":
+    main()
