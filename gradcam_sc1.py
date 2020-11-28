@@ -20,7 +20,6 @@ from models.r3d import R3DNet
 from models.r21d import R2Plus1DNet
 import cv2
 from time import sleep
-import cmapy
 
 
 def show_cam_on_image(img, mask):
