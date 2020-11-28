@@ -20,6 +20,7 @@ from models.r3d import R3DNet
 from models.r21d import R2Plus1DNet
 import cv2
 from time import sleep
+import cmapy
 
 
 def show_cam_on_image(img, mask):
@@ -231,7 +232,9 @@ def parse_args():
     parser.add_argument('--momentum', type=float, default=9e-1, help='momentum')
     parser.add_argument('--wd', type=float, default=5e-4, help='weight decay')
     parser.add_argument('--model_dir', type=str, default='./ckpt/', help='path to save model')
-    parser.add_argument('--ckpt', type=str, default="/home/shivababa/PycharmProjects/Inter-intra-video-contrastive-learning/ckpt/r3d_res_repeat_cls.pth", help='checkpoint path')
+    parser.add_argument('--ckpt', type=str,
+                        default="/home/shivababa/PycharmProjects/Inter-intra-video-contrastive-learning/ckpt/r3d_res_repeat_cls.pth",
+                        help='checkpoint path')
     parser.add_argument('--desp', type=str, help='additional description')
     parser.add_argument('--epochs', type=int, default=150, help='number of total epochs to run')
     parser.add_argument('--start-epoch', type=int, default=1, help='manual epoch number (useful on restarts)')
