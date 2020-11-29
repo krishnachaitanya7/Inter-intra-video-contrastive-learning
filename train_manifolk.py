@@ -155,7 +155,7 @@ def diff(x):
 
 
 def test_manifolk(test_model):
-    # torch.set_grad_enabled(False)
+    torch.set_grad_enabled(False)
     # We need to comment this for Grad Cam
     global epoch
     test_model.eval()
@@ -192,7 +192,7 @@ def test_manifolk(test_model):
     X_numpy = np.array(all_tsne_features, dtype=np.float32)
     X_embedded = TSNE(n_components=3).fit_transform(X_numpy)
     log_db.insert(epoch, X_embedded, all_original_labels, all_predicted_labels, all_uids)
-    print("Sup? Good?")
+    torch.set_grad_enabled(True)
 
 
 def train(epoch, train_loader, model, contrast, criterion_1, criterion_2, optimizer, opt):
@@ -313,7 +313,7 @@ def main():
         transforms.ToTensor()
     ])
     if args.dataset == 'ucf101':
-        trainset = UCF101Dataset('./data/ucf101/', split='4', transforms_=train_transforms)
+        trainset = UCF101Dataset('./data/ucf101/', split='2', transforms_=train_transforms)
     else:
         trainset = HMDB51Dataset('./data/hmdb51/', transforms_=train_transforms)
 
