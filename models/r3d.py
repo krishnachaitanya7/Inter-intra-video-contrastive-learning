@@ -142,6 +142,8 @@ class R3DNet(nn.Module):
         self.gradients = None
         # Initialize the features
         self.features = None
+        # features for TSNE Layer
+        self.tsne_layer_features = None
         # first conv, with stride 1x2x2 and kernel size 3x7x7
         if modality == 'uv':
             self.conv1 = SpatioTemporalConv(2, 64, [3, 7, 7], stride=[1, 2, 2], padding=[1, 3, 3])
@@ -189,10 +191,10 @@ class R3DNet(nn.Module):
         
         x = self.pool(x)
         x = x.view(-1, 512)
-
+        # Save layer to generate TSNE
+        self.tsne_layer_features = x
         if self.with_classifier:
             x = self.linear(x)
-
         return x
 
 if __name__ == '__main__':

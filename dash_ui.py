@@ -6,6 +6,7 @@ from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
 import gradcam_sc1
+import base64
 
 # I am not a big fan of global variables, but here we go
 # I apologize again
@@ -16,7 +17,7 @@ play_video = True
 predicted_indices = None
 original_indices = None
 # Un changing Globals
-vid_sleep_time = 100  # In milliseconds
+vid_sleep_time = 900  # In milliseconds
 video_frame_index = 0
 
 
@@ -31,6 +32,7 @@ def id_to_label(x: int):
 
 if __name__ == "__main__":
     app = dash.Dash(external_stylesheets=[dbc.themes.UNITED])
+    # encoded_image = base64.b64encode(open("colormap_Jet.png", 'rb').read())
     original_vid, gradcam_vid, predicted_indices, original_indices = gradcam_sc1.main()
     # Now the predicted and original indices are for one video. Each video usually contains of n = 16 frames.
     # during plotting the GUI, as we plot for every frame, it will be useful if we have predicted indices first shapes
@@ -50,6 +52,7 @@ if __name__ == "__main__":
                            href="https://github.com/krishnachaitanya7/Inter-intra-video-contrastive-learning/blob/devel/gradcam_sc1.py")
                 ], width=True),
             ], align="end"),
+            html.Div(id="hidden-div", style={"display": "none"}),
             html.Hr(),
             dbc.Row([
                 dbc.Col([
@@ -63,8 +66,8 @@ if __name__ == "__main__":
             ], align="end"),
             html.Hr(),
             dcc.Interval('interval_component', interval=vid_sleep_time, n_intervals=0),
-            html.Div(id="tab-content", className="p-4"),
-            html.Div(id="hidden-div", style={"display": "none"})
+            html.Div(id="tab-content", className="p-4")
+
         ],
             fluid=True)
     ])
@@ -113,6 +116,9 @@ if __name__ == "__main__":
                                    color="success" if predicted_index == original_index else "danger",
                                    className="mr-1")
                     ], width=True),
+                    dbc.Col([
+                        html.Img(src=app.get_asset_url('colormap_Jet.png'), style={'height': '83%', 'width': '90%'})
+                    ])
                 ])
             ]),
         else:

@@ -23,7 +23,10 @@ from time import sleep
 
 
 def show_cam_on_image(img, mask):
-    heatmap = cv2.applyColorMap(np.uint8(255 * mask), cv2.COLORMAP_JET)
+    # Because for colormap to apply correctly, the image needs to be in BGR. By default each frame of ours is in
+    # RGB, so we change the order
+    img = img[..., ::-1]
+    heatmap = cv2.applyColorMap(np.uint8(255 * mask), cv2.COLORMAP_RAINBOW)
     heatmap = np.float32(heatmap) / 255
     cam = heatmap + np.float32(img)
     cam = cam / np.max(cam)

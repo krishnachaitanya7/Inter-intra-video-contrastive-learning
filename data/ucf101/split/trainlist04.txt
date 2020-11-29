@@ -1,0 +1,2 @@
+ApplyEyeMakeup/v_ApplyEyeMakeup_g01_c01.avi 1
+ApplyLipstick/v_ApplyLipstick_g01_c01.avi 2
