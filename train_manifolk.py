@@ -61,7 +61,6 @@ def parse_option():
     parser.add_argument('--beta2', type=float, default=0.999, help='beta2 for Adam')
     parser.add_argument('--weight_decay', type=float, default=1e-4, help='weight decay')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
-
     # resume path
     parser.add_argument('--resume', default='', type=str, metavar='PATH',
                         help='path to latest checkpoint (default: none)')
