@@ -1,4 +1,5 @@
 .logs/
+lib/
 ckpt/*
 events*
 dash_player/
