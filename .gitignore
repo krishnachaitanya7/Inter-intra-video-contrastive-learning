@@ -1,5 +1,5 @@
 .logs/
-ckpt/r3d_res_repeat_cls.pth
+ckpt/*
 events*
 dash_player/
 *.db
