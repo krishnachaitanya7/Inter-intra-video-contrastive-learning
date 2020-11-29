@@ -188,8 +188,8 @@ def test_manifolk(test_model):
             all_tsne_features.append(features)
             all_original_labels.append(id_to_label(targets.cpu().data.numpy()[0]))
             all_predicted_labels.append("-")
-            all_uids.append(f"{vid_uid}_part{i}")
-            i += 1
+            all_uids.append(f"{vid_uid[0]}_part{i}")
+            break
     X_numpy = np.array(all_tsne_features, dtype=np.float32)
     X_embedded = TSNE(n_components=3).fit_transform(X_numpy)
     log_db.insert(epoch, X_embedded, all_original_labels, all_predicted_labels, all_uids)
@@ -314,7 +314,7 @@ def main():
         transforms.ToTensor()
     ])
     if args.dataset == 'ucf101':
-        trainset = UCF101Dataset('./data/ucf101/', split='2', transforms_=train_transforms)
+        trainset = UCF101Dataset('./data/ucf101/', split='4', transforms_=train_transforms)
     else:
         trainset = HMDB51Dataset('./data/hmdb51/', transforms_=train_transforms)
 
@@ -325,7 +325,7 @@ def main():
         transforms.CenterCrop(112),
         transforms.ToTensor()
     ])
-    test_dataset = UCF101DatasetManifolk('data/ucf101', args.cl, args.testsplit, False, test_transforms)
+    test_dataset = UCF101DatasetManifolk('data/ucf101', args.cl, "2", False, test_transforms)
     global test_dataloader
     test_dataloader = DataLoader(test_dataset, batch_size=args.bs, shuffle=False,
                                  num_workers=args.num_workers, pin_memory=True)
