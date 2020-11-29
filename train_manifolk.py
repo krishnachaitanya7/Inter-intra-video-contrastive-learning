@@ -49,7 +49,7 @@ def parse_option():
     parser.add_argument('--save_freq', type=int, default=40, help='save frequency')
     parser.add_argument('--batch_size', type=int, default=16, help='batch_size')
     parser.add_argument('--bs', type=int, default=1, help='batch_size for test')
-    parser.add_argument('--num_workers', type=int, default=1, help='num of workers to use')
+    parser.add_argument('--num_workers', type=int, default=8, help='num of workers to use')
     parser.add_argument('--epochs', type=int, default=240, help='number of training epochs')
     parser.add_argument('--cl', type=int, default=16, help='clip length')
     parser.add_argument('--testsplit', type=str, default='2', help='dataset split')
@@ -327,7 +327,7 @@ def main():
     test_dataset = UCF101DatasetManifolk('data/ucf101', args.cl, "2", False, test_transforms)
     global test_dataloader
     test_dataloader = DataLoader(test_dataset, batch_size=args.bs, shuffle=False,
-                                 num_workers=args.num_workers, pin_memory=True)
+                                 num_workers=1, pin_memory=True)
 
     n_data = trainset.__len__()
 
