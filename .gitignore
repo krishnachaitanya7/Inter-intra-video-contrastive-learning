@@ -3,3 +3,5 @@ ckpt/*
 events*
 dash_player/
 *.db
+lib/__pycache__/
+models/__pycache__/
