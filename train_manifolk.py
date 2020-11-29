@@ -313,7 +313,7 @@ def main():
         transforms.ToTensor()
     ])
     if args.dataset == 'ucf101':
-        trainset = UCF101Dataset('./data/ucf101/', split='4', transforms_=train_transforms)
+        trainset = UCF101Dataset('./data/ucf101/', split='2', transforms_=train_transforms)
     else:
         trainset = HMDB51Dataset('./data/hmdb51/', transforms_=train_transforms)
 
