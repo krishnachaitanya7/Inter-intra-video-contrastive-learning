@@ -41,7 +41,7 @@ if __name__ == "__main__":
     predicted_indices = [index for index in predicted_indices for _ in range(frames_per_video)]
     original_indices = [index for index in original_indices for _ in range(frames_per_video)]
     dropdown_menu_items = [
-        {'label': k, 'value': k} for k in open("data/ucf101/split/all_test.txt", "r").readlines()
+        {'label': k, 'value': k} for k in open("data/ucf101/split/testlist02.txt", "r").readlines()
     ]
     app.layout = html.Div([
         dbc.Container([
@@ -141,4 +141,4 @@ if __name__ == "__main__":
         return dash.no_update
 
 
-    app.run_server(debug=True)
+    app.run_server(debug=True, port=9000)

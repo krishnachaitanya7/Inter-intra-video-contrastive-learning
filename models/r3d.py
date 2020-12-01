@@ -179,7 +179,7 @@ class R3DNet(nn.Module):
         # Save features and add hook for the gradcam
         self.features = x
         # Removed temporarily
-        # x.register_hook(self.save_gradient)
+        x.register_hook(self.save_gradient)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
